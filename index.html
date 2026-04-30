@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://gc.zgo.at; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://h3xdaemon.goatcounter.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <title>GIMI Snowflake ❄️ DLL CFG Randomizer</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="./style.css?v=e5a5771e4f06ff158ba58e4a5861b7957e60a7f3">
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <header>
+      <div class="logo">❄️ GIMI SNOWFLAKE</div>
+      <div class="subtitle">DLL CFG FLOW RANDOMIZER · JMP+JUNK VARIANT</div>
+      <div class="status-bar">
+        <div class="status-dot" id="wasm-dot"></div>
+        <span id="wasm-status">Loading WASM...</span>
+      </div>
+    </header>
+
+    <!-- Drop Zone -->
+    <div class="panel">
+      <div class="panel-title">📂 Input</div>
+      <div id="drop-zone">
+        <div class="drop-icon">📦</div>
+        <div class="drop-text">Drag &amp; Drop d3d11.dll here</div>
+        <div class="drop-sub hidden" id="drop-hint"></div>
+        <input type="file" id="file-input" accept=".dll,.exe">
+      </div>
+      <div class="file-meta hidden" id="file-meta">
+        <div class="meta-item">
+          <span class="meta-label">Filename</span>
+          <span class="meta-value" id="meta-name">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Size</span>
+          <span class="meta-value" id="meta-size">—</span>
+        </div>
+        <div class="meta-item meta-item-full">
+          <span class="meta-label">SHA256 (original)</span>
+          <span class="meta-value hash" id="meta-sha">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analyze result -->
+    <div class="panel section hidden" id="analyze-panel">
+      <div class="panel-title">🧬 Analysis</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="s-total">0</div>
+          <div class="stat-label">Total Sleds</div>
+          <div class="stat-sub">≥3 bytes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="s-int3">0</div>
+          <div class="stat-label">INT3 (0xCC)</div>
+          <div class="stat-sub">MSVC padding</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="s-nop">0</div>
+          <div class="stat-label">NOP (0x90)</div>
+          <div class="stat-sub">GCC/Clang padding</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div class="panel">
+      <div class="panel-title">⚡ Generation</div>
+      <details class="advanced-opts">
+        <summary>⚙️ Advanced Options</summary>
+        <div class="opts-grid opts-grid-spaced">
+          <div class="form-group">
+            <label>MAX MUTATIONS</label>
+            <input type="number" id="opt-count" value="128" min="1" max="65535">
+            <div class="hint">Number of sleds to patch (up to available)</div>
+          </div>
+          <div class="form-group">
+            <label>PATCH LEVEL</label>
+            <select id="opt-level">
+              <option value="0" selected>0 - Default</option>
+              <option value="1">1 - Legacy</option>
+              <option value="2">2 - Extreme</option>
+            </select>
+            <div class="hint">Default patches terminal .pdata padding only</div>
+          </div>
+          <div class="form-group">
+            <label>SEED (optional)</label>
+            <input type="text" id="opt-seed" placeholder="leave empty = random (e.g. 1234 or 0xABC)">
+            <div class="hint">Fix seed for reproducible output</div>
+          </div>
+        </div>
+      </details>
+
+      <div class="progress-bar progress-bar-spaced">
+        <div class="progress-fill" id="prog"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-block" id="btn-patch" disabled>❄️ Generate</button>
+      </div>
+    </div>
+
+    <!-- Result (shared between Generate mode and Verify mode) -->
+    <div class="panel section hidden" id="result-panel">
+      <div class="panel-title" id="result-title">✅ Result</div>
+
+      <!-- ── Generate mode ─────────────────────────────────────────── -->
+      <div id="gen-result-inner">
+        <div class="stats-grid stats-grid-result">
+          <div class="stat-card">
+            <div class="stat-num stat-num-success" id="r-mutations">0</div>
+            <div class="stat-label">Mutations</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num stat-num-seed" id="r-seed">—</div>
+            <div class="stat-label">Seed Used</div>
+          </div>
+        </div>
+        <div class="hash-row">
+          <div class="hash-item">
+            <span class="hash-badge">BEFORE</span>
+            <span class="hash-val" id="h-before">—</span>
+          </div>
+          <div class="hash-item">
+            <span class="hash-badge hash-badge-after">AFTER</span>
+            <span class="hash-val hash-changed" id="h-after">—</span>
+          </div>
+        </div>
+        <div class="download-row">
+          <button class="btn btn-success" id="download-btn">💾 Download Again</button>
+        </div>
+      </div>
+
+      <!-- ── Verify mode (auto-activated when a patched DLL is dropped) ── -->
+      <div id="ver-result-inner" class="hidden">
+        <p id="ver-filename" class="verify-filename"></p>
+        <div class="check-row" id="verify-checks"></div>
+        <div class="file-meta verify-meta">
+          <div class="meta-item">
+            <span class="meta-label">File Size</span>
+            <span class="meta-value" id="v-filesize">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">.text Offset</span>
+            <span class="meta-value" id="v-textoff">—</span>
+          </div>
+          <div class="meta-item meta-item-full">
+            <span class="meta-label">.text Size</span>
+            <span class="meta-value" id="v-textsz">—</span>
+          </div>
+        </div>
+        <div class="sled-bar-row">
+          <span class="sled-label">Sleds mutated</span>
+          <div class="sled-bar">
+            <div class="sled-bar-fill" id="v-sled-bar"></div>
+          </div>
+          <span id="v-sled-ratio" class="sled-ratio">0 / 0</span>
+        </div>
+        <div class="sled-tags" id="v-sled-tags"></div>
+        <div id="v-sled-more" class="sled-more"></div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log" id="log"></div>
+
+    <!-- Guide -->
+    <div class="panel guide-panel">
+      <div class="panel-title">📖 Guide &amp; Principles</div>
+      <div class="guide-copy">
+        <p class="guide-heading"><strong class="text-cyan">How to use:</strong></p>
+        <ul class="guide-list">
+          <li class="guide-list-spaced">Drop your <code class="code-purple">d3d11.dll</code> into the drop
+            zone above.</li>
+          <li class="guide-list-spaced">Click <strong>Generate</strong>. The tool will parse the PE headers, find
+            code caves, and safely inject
+            CFG obfuscation.</li>
+          <li><strong>Recommended:</strong> Backup your original <code class="code-purple">d3d11.dll</code>, then replace it
+            with the generated DLL.</li>
+        </ul>
+        <div class="risk-note">
+          <strong>Community risk warning:</strong> This tool intentionally changes static byte signatures. Even when it
+          works locally, signature obfuscation can look like hacker behavior to game security teams and may encourage
+          stricter blocking of related community tools. Use it only if you understand that risk.
+        </div>
+        <p class="guide-heading"><strong class="text-cyan">How it works:</strong>
+        </p>
+        <p class="guide-muted guide-heading">
+          Certain anime game anti-cheats rely on heuristic based detection. This tool
+          breaks those signatures without affecting the actual code execution logic.
+        </p>
+        <p class="guide-muted">
+          It scans the executable for compiler-generated padding sleds (like <code class="code-purple">INT3</code> or <code class="code-purple">NOP</code>). In these safe caves,
+          it injects a random <code class="code-green">JMP</code>
+          instruction that jumps over a sequence of randomly generated "junk" bytes. This creates unpredictable static
+          byte signatures while maintaining 100% operational stability, effectively bypassing static analysis
+          heuristics.
+        </p>
+        <p class="guide-muted guide-privacy">
+          <strong class="text-cyan">Privacy &amp; Safety:</strong> All processing is performed
+          <strong>entirely locally in your browser</strong> via WebAssembly. Your original DLL and generated output
+          never leave your computer. Anonymous usage events (pageviews and patch_success counts) are sent to GoatCounter
+          for statistical purposes.
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-links">
+        <a href="https://github.com/H3XDaemon/GIMI-Snowflake-web" target="_blank" rel="noopener noreferrer">🔗 H3XDaemon/GIMI-Snowflake-web</a>
+        &nbsp;·&nbsp; JMP+Junk CFG Randomizer
+      </div>
+      <div class="footer-disclaimer">
+        Disclaimer: This tool is intended for educational and security research purposes only. The author assumes no
+        liability for any misuse or damage caused by this software.
+      </div>
+    </footer>
+  </div>
+
+  <script data-goatcounter="https://h3xdaemon.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+  <script type="module" src="./app.js?v=e5a5771e4f06ff158ba58e4a5861b7957e60a7f3"></script>
+</body>
+
+</html>
